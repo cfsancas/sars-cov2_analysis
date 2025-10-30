@@ -303,7 +303,6 @@ def assign_geography(samples: pd.DataFrame) -> pd.DataFrame:
         ]
         print("Municipalities without coordinates")
         print(missing)
-        print("########")
 
     province_dict = DATA_DIR / "location_province_dict.tsv"
     if province_dict.exists():
