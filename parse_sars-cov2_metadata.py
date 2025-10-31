@@ -371,31 +371,31 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
         pd.to_datetime(occident["Fecha"], format="%d/%m/%Y", errors="coerce").isnull()
     ]
     if occident_errors.shape[0] > 0:
-        logger.warning(">>> Dates with wrong format (HUVR)")
+        logger.warning("HUVR dates with wrong format (HUVR)")
         logger.warning("%s", occident_errors.to_string(index=False))
         occident["Fecha"] = pd.to_datetime(occident["Fecha"], format="%d/%m/%Y", errors="coerce")
     else:
-        logger.info(">>> HUVR dates format OK")
+        logger.info("HUVR dates format OK")
         occident["Fecha"] = pd.to_datetime(occident["Fecha"], format="%d/%m/%Y")
 
     today = dt.datetime.now()
     future = occident.loc[occident["Fecha"] > today]
     if not future.empty:
-        logger.warning(">>> Future dates in HUVR")
+        logger.warning("Future dates in HUVR")
         logger.warning("%s", future[["Identificacion", "NUHSA", "Fecha"]].to_string(index=False))
         occident_errors = pd.concat([occident_errors, future], ignore_index=True)
         occident = occident.loc[occident["Fecha"] <= today]
     else:
-        logger.info(">>> HUVR future dates OK")
+        logger.info("HUVR future dates OK")
 
     old = occident.loc[occident["Fecha"] < "2020-01-01"]
     if not old.empty:
-        logger.warning(">>> Old dates in HUVR")
+        logger.warning("Old dates in HUVR")
         logger.warning("%s", old[["Identificacion", "NUHSA", "Fecha"]].to_string(index=False))
         occident_errors = pd.concat([occident_errors, old], ignore_index=True)
         occident = occident.loc[occident["Fecha"] >= "2020-01-01"]
     else:
-        logger.info(">>> HUVR old dates OK")
+        logger.info("HUVR old dates OK")
 
     occident_errors.to_csv("date_occi_error.tsv", sep="\t", index=False)
     occident = occident.drop_duplicates(subset=["Fecha", "Identificacion"], keep="first")
@@ -433,14 +433,14 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     parsed = pd.to_datetime(orient["ori_temp_date"], format="%d/%m/%y", errors="coerce")
     failures = orient.loc[parsed.isnull(), ["ori_temp_id", "ori_temp_date", "Fecha de la pueba"]]
     if not failures.empty:
-        logger.warning(">>> HUSC dates with wrong format")
+        logger.warning("HUSC dates with wrong format")
         logger.warning("%s", failures.to_string(index=False))
         orient_errors = pd.concat([orient_errors, failures], ignore_index=True)
     orient["ori_temp_date"] = parsed
 
     future = orient.loc[orient["ori_temp_date"] > today]
     if not future.empty:
-        logger.warning(">>> Future dates in HUSC")
+        logger.warning("Future dates in HUSC")
         logger.warning(
             "%s",
             future[["ori_temp_id", "NUHSA", "Fecha de la pueba", "ori_temp_date"]].to_string(index=False),
@@ -448,11 +448,11 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
         orient_errors = pd.concat([orient_errors, future], ignore_index=True)
         orient = orient.loc[orient["ori_temp_date"] <= today]
     else:
-        logger.info(">>> HUSC future dates OK")
+        logger.info("HUSC future dates OK")
 
     old = orient.loc[orient["ori_temp_date"] < "2020-01-01"]
     if not old.empty:
-        logger.warning(">>> Old dates in HUSC")
+        logger.warning("Old dates in HUSC")
         logger.warning(
             "%s",
             old[["ori_temp_id", "NUHSA", "Fecha de la pueba", "ori_temp_date"]].to_string(index=False),
@@ -460,7 +460,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
         orient_errors = pd.concat([orient_errors, old], ignore_index=True)
         orient = orient.loc[orient["ori_temp_date"] >= "2020-01-01"]
     else:
-        logger.info(">>> HUSC old dates OK")
+        logger.info("HUSC old dates OK")
 
     orient_errors.to_csv("date_ori_errors.tsv", sep="\t", index=False)
     orient.drop_duplicates(subset=["ori_temp_date", "ori_temp_id"], keep="first", inplace=True)
@@ -483,20 +483,20 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     malaga["Fecha registro"] = malaga_parsed
     future = malaga.loc[malaga["Fecha registro"] > today]
     if not future.empty:
-        logger.warning(">>> Future dates in HRUM")
+        logger.warning("Future dates in HRUM")
         logger.warning("%s", future.to_string(index=False))
         malaga_errors.append(future)
         malaga = malaga.loc[malaga["Fecha registro"] <= today]
     else:
-        logger.info(">>> HRUM future dates OK")
+        logger.info("HRUM future dates OK")
     old = malaga.loc[malaga["Fecha registro"] < "2020-01-01"]
     if not old.empty:
-        logger.warning(">>> Old dates in HRUM")
+        logger.warning("Old dates in HRUM")
         logger.warning("%s", old.to_string(index=False))
         malaga_errors.append(old)
         malaga = malaga.loc[malaga["Fecha registro"] >= "2020-01-01"]
     else:
-        logger.info(">>> HRUM old dates OK")
+        logger.info("HRUM old dates OK")
 
     result = result.merge(malaga, how="left", left_on="laboratoryID", right_on="Petición")
     result["fecha_micro_hurm"] = result["Fecha registro"]
@@ -506,22 +506,22 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     granada = pd.read_csv(granada_path, sep=";", dtype=str)
     granada["date_huvn"] = granada["Fecha de toma de muestra"].fillna(granada["Fecha de recepción de la muestra"])
     format_errors = granada.loc[pd.to_datetime(granada["date_huvn"], format="%d/%m/%Y", errors="coerce").isnull()]
-    logger.info(">>> Errors in HUVN date format %s: %d", "%d/%m/%Y", format_errors.shape[0])
+    logger.info("Errors in HUVN date format %s: %d", "%d/%m/%Y", format_errors.shape[0])
     granada["date_huvn"] = pd.to_datetime(granada["date_huvn"], format="%d/%m/%Y", errors="coerce")
     future = granada.loc[granada["date_huvn"] > today]
     if not future.empty:
-        logger.warning(">>> Future dates in HUVN")
+        logger.warning("Future dates in HUVN")
         logger.warning("%s", future.to_string(index=False))
         granada = granada.loc[granada["date_huvn"] <= today]
     else:
-        logger.info(">>> HUVN future dates OK")
+        logger.info("HUVN future dates OK")
     old = granada.loc[granada["date_huvn"] < "2020-01-01"]
     if not old.empty:
-        logger.warning(">>> Old dates in HUVN")
+        logger.warning(" Old dates in HUVN")
         logger.warning("%s", old.to_string(index=False))
         granada = granada.loc[granada["date_huvn"] >= "2020-01-01"]
     else:
-        logger.info(">>> HUVN old dates OK")
+        logger.info("HUVN old dates OK")
 
     result = result.merge(granada[["date_huvn", "Número"]], how="left", left_on="laboratoryID", right_on="Número")
     result["fecha_micro_huvn"] = result["date_huvn"]
