@@ -11,14 +11,11 @@ Usage::
 The script assumes the same directory layout that the notebook expected.  You
 can override the base directory by exporting ``COVID19_SSPA_BASE``.
 """
-from __future__ import annotations
-
 import datetime as dt
 import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, Iterable, List
 
 import numpy as np
 import pandas as pd
@@ -37,7 +34,7 @@ WEB_REPORTS_DIR = SSP_PATH / "analysis_MN908947/reports/web"
 logger = logging.getLogger(__name__)
 
 
-def fasta_get_by_name(fasta: Path | str, ids: Iterable[str], delimit: str = " ", column: int = 0) -> Dict[str, str]:
+def fasta_get_by_name(fasta: Path | str, ids: list[str], delimit: str = " ", column: int = 0) -> dict[str, str]:
     """Return a ``header -> sequence`` dictionary for the requested identifiers."""
 
     fasta_path = Path(fasta)
@@ -45,7 +42,7 @@ def fasta_get_by_name(fasta: Path | str, ids: Iterable[str], delimit: str = " ",
     if not fasta_path.exists():
         raise FileNotFoundError(f"Missing FASTA file: {fasta_path}")
 
-    sequences: Dict[str, str] = {}
+    sequences: dict[str, str] = {}
     current_header = ""
     with fasta_path.open("r") as handle:
         for raw_line in handle:
@@ -56,7 +53,7 @@ def fasta_get_by_name(fasta: Path | str, ids: Iterable[str], delimit: str = " ",
                 continue
             sequences[current_header] += line
 
-    subset: Dict[str, str] = {}
+    subset: dict[str, str] = {}
     for header, sequence in sequences.items():
         token = header.split(delimit)[column]
         if token in targets:
@@ -78,7 +75,7 @@ def clean_lab_ids(series: pd.Series) -> pd.Series:
 
 
 def build_samples(plan: pd.DataFrame) -> pd.DataFrame:
-    frames: List[pd.DataFrame] = []
+    frames: list[pd.DataFrame] = []
     for run_id, qc_path, viralrecon_version in plan[["run_id", "path_QC", "viralrecon_version"]].values:
         qc = pd.read_csv(qc_path, dtype={"laboratoryID": str, "batch": str})
         qc.drop(columns=["qc_nextclade", "totalGaps_nextclade", "totalMutations_nextclade"], inplace=True, errors="ignore")
@@ -93,7 +90,7 @@ def build_samples(plan: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_mapping(plan: pd.DataFrame) -> pd.DataFrame:
-    frames: List[pd.DataFrame] = []
+    frames: list[pd.DataFrame] = []
     for run_id in plan["run_id"].values:
         location = ""
         if "huvr" in run_id:
@@ -405,7 +402,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     result.rename(columns={"Fecha": "Fecha_micro_huvr"}, inplace=True)
     result["Fecha_micro"] = pd.to_datetime(result["Fecha_micro_huvr"], format="%Y-%m-%d", errors="coerce")
 
-    prison_ids: List[str] = []
+    prison_ids: list[str] = []
     if "Justificacion clinica" in occident.columns:
         prison_cases = occident.loc[occident["Justificacion clinica"] == "Brote prisión", ["Identificacion"]]
         prison_ids = prison_cases["Identificacion"].tolist()
@@ -565,7 +562,7 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
 
     location_names = DATA_DIR / "location_names_dict.tsv"
     if location_names.exists():
-        translation: Dict[str, str] = {}
+        translation: dict[str, str] = {}
         with location_names.open("r") as handle:
             for raw_line in handle:
                 line = raw_line.strip()
@@ -690,7 +687,7 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
 
 
 def write_sequences(auspice: pd.DataFrame, samples: pd.DataFrame) -> None:
-    consensus_seq: Dict[str, str] = {}
+    consensus_seq: dict[str, str] = {}
     for strain, path in auspice[["strain", "nextstrain_genome"]].loc[auspice["nextstrain_genome"].notnull()].values:
         if path in {"unknown", "-"}:
             continue
@@ -744,7 +741,7 @@ def write_sequences(auspice: pd.DataFrame, samples: pd.DataFrame) -> None:
                 consensus_seq[key] += line
 
     wave1_consensus = WAVE1_PATH / "1wave_all_consensus_sequences.fasta"
-    wave1_data: Dict[str, str] = {}
+    wave1_data: dict[str, str] = {}
     with wave1_consensus.open("r") as handle:
         key = ""
         for raw_line in handle:
