@@ -74,7 +74,13 @@ def load_location_translations(tsv_path: Path) -> dict[str, str]:
         for row in reader:
             if len(row) < 2:
                 continue
-            origin, target = (value.strip() for value in row[:2])
+            cleaned_values: list[str] = []
+            for value in row[:2]:
+                cleaned_values.append(value.strip())
+            if len(cleaned_values) < 2:
+                continue
+            origin = cleaned_values[0]
+            target = cleaned_values[1]
             if origin:
                 translation[origin] = target
     return translation
@@ -607,7 +613,11 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
     outliers_file = NEXTSTRAIN_DATA / "remove_SARSCOV2_samples_outliers.txt"
     if outliers_file.exists():
         with outliers_file.open("r") as handle:
-            outliers = [line.strip() for line in handle if line.strip()]
+            outliers: list[str] = []
+            for raw_line in handle:
+                stripped_line = raw_line.strip()
+                if stripped_line:
+                    outliers.append(stripped_line)
         selected = selected.loc[~selected["strain"].isin(outliers)]
     logger.info(f"Auspice after AND id filter: {selected.shape[0]}")
 
