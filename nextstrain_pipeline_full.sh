@@ -6,7 +6,7 @@ set -euo pipefail
 METADATA="./data/auspice_metadata.tsv"
 SEQUENCES="./data/sequence.fasta"
 REFERENCE="./data/ref_sequence_ncbi.gb"
-RESULTS_DIR="./results_ful"
+RESULTS_DIR="./results_full"
 AUSPICE_DIR="./auspice_full"
 
 mkdir -p "${RESULTS_DIR}" "${AUSPICE_DIR}"
