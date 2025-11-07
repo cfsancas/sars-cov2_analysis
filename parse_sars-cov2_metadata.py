@@ -232,14 +232,14 @@ def build_metadata() -> pd.DataFrame:
 
     duplicated_ids = metadata.loc[metadata.duplicated(["IDlaboratorio"], keep=False)]
     if not duplicated_ids.empty:
-        logger.warning("%d duplicated laboratory IDs in metadata", duplicated_ids.shape[0])
-        logger.warning(
-            "Duplicated metadata IDs preview:\n%s",
+        logger.warning(f"{duplicated_ids.shape[0]} duplicated laboratory IDs in metadata")
+        preview = (
             duplicated_ids[["IDlaboratorio", "NUHSA"]]
             .sort_values("IDlaboratorio")
             .head()
-            .to_string(index=False),
+            .to_string(index=False)
         )
+        logger.warning(f"Duplicated metadata IDs preview:\n{preview}")
         duplicated_ids.sort_values("IDlaboratorio").to_excel(
             "metadata_laboratory_id_duplicated.xlsx", index=False
         )
@@ -255,18 +255,18 @@ def build_metadata() -> pd.DataFrame:
 
 def merge_metadata(samples: pd.DataFrame, lineage: pd.DataFrame, nextclade: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
     merged = samples.copy()
-    logger.info("Total samples: %d", merged.shape[0])
+    logger.info(f"Total samples: {merged.shape[0]}")
     merged = merged.merge(lineage, how="left", left_on="sample", right_on="taxon")
-    logger.info("Samples merged with lineage: %d", merged.shape[0])
+    logger.info(f"Samples merged with lineage: {merged.shape[0]}")
     merged = merged.merge(nextclade, how="left", left_on="sample", right_on="seqName")
-    logger.info("Samples merged with nextclade: %d", merged.shape[0])
+    logger.info(f"Samples merged with nextclade: {merged.shape[0]}")
     merged = merged.merge(metadata, how="left", left_on="laboratoryID", right_on="IDlaboratorio")
-    logger.info("Samples merged with metadata: %d", merged.shape[0])
+    logger.info(f"Samples merged with metadata: {merged.shape[0]}")
     merged.drop_duplicates(inplace=True, keep="first")
-    logger.info("Samples without duplicates: %d", merged.shape[0])
+    logger.info(f"Samples without duplicates: {merged.shape[0]}")
     duplicated_lab = merged.loc[merged["laboratoryID"].duplicated(keep=False)]
     if not duplicated_lab.empty:
-        logger.warning("%d duplicated laboratory IDs in samples", duplicated_lab.shape[0])
+        logger.warning(f"{duplicated_lab.shape[0]} duplicated laboratory IDs in samples")
         duplicated_lab.sort_values("laboratoryID").to_excel("samples_laboratory_id_duplicated.xlsx", index=False)
     return merged
 
@@ -308,7 +308,7 @@ def assign_geography(samples: pd.DataFrame) -> pd.DataFrame:
             (~enriched["Municipio"].isin(lat_long["name"])) & enriched["Municipio"].notnull(),
             "Municipio",
         ]
-        logger.info("Municipalities without coordinates\n%s", missing.to_string(index=False))
+        logger.info(f"Municipalities without coordinates\n{missing.to_string(index=False)}")
 
     province_dict = DATA_DIR / "location_province_dict.tsv"
     if province_dict.exists():
@@ -320,10 +320,12 @@ def assign_geography(samples: pd.DataFrame) -> pd.DataFrame:
                 location, province = line.split("\t")
                 enriched.loc[enriched["Municipio"] == location, "provincia"] = province
 
-    logger.info(
-        "Municipalities without province\n%s",
-        enriched.loc[(enriched["provincia"].isnull()) & enriched["Municipio"].notnull(), "Municipio"].value_counts().to_string(),
+    missing_province = (
+        enriched.loc[(enriched["provincia"].isnull()) & enriched["Municipio"].notnull(), "Municipio"]
+        .value_counts()
+        .to_string()
     )
+    logger.info(f"Municipalities without province\n{missing_province}")
     return enriched
 
 
@@ -369,7 +371,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     ]
     if occident_errors.shape[0] > 0:
         logger.warning("HUVR dates with wrong format (HUVR)")
-        logger.warning("%s", occident_errors.to_string(index=False))
+        logger.warning(occident_errors.to_string(index=False))
         occident["Fecha"] = pd.to_datetime(occident["Fecha"], format="%d/%m/%Y", errors="coerce")
     else:
         logger.info("HUVR dates format OK")
@@ -379,7 +381,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     future = occident.loc[occident["Fecha"] > today]
     if not future.empty:
         logger.warning("Future dates in HUVR")
-        logger.warning("%s", future[["Identificacion", "NUHSA", "Fecha"]].to_string(index=False))
+        logger.warning(future[["Identificacion", "NUHSA", "Fecha"]].to_string(index=False))
         occident_errors = pd.concat([occident_errors, future], ignore_index=True)
         occident = occident.loc[occident["Fecha"] <= today]
     else:
@@ -388,7 +390,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     old = occident.loc[occident["Fecha"] < "2020-01-01"]
     if not old.empty:
         logger.warning("Old dates in HUVR")
-        logger.warning("%s", old[["Identificacion", "NUHSA", "Fecha"]].to_string(index=False))
+        logger.warning(old[["Identificacion", "NUHSA", "Fecha"]].to_string(index=False))
         occident_errors = pd.concat([occident_errors, old], ignore_index=True)
         occident = occident.loc[occident["Fecha"] >= "2020-01-01"]
     else:
@@ -431,17 +433,14 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     failures = orient.loc[parsed.isnull(), ["ori_temp_id", "ori_temp_date", "Fecha de la pueba"]]
     if not failures.empty:
         logger.warning("HUSC dates with wrong format")
-        logger.warning("%s", failures.to_string(index=False))
+        logger.warning(failures.to_string(index=False))
         orient_errors = pd.concat([orient_errors, failures], ignore_index=True)
     orient["ori_temp_date"] = parsed
 
     future = orient.loc[orient["ori_temp_date"] > today]
     if not future.empty:
         logger.warning("Future dates in HUSC")
-        logger.warning(
-            "%s",
-            future[["ori_temp_id", "NUHSA", "Fecha de la pueba", "ori_temp_date"]].to_string(index=False),
-        )
+        logger.warning(future[["ori_temp_id", "NUHSA", "Fecha de la pueba", "ori_temp_date"]].to_string(index=False))
         orient_errors = pd.concat([orient_errors, future], ignore_index=True)
         orient = orient.loc[orient["ori_temp_date"] <= today]
     else:
@@ -450,10 +449,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     old = orient.loc[orient["ori_temp_date"] < "2020-01-01"]
     if not old.empty:
         logger.warning("Old dates in HUSC")
-        logger.warning(
-            "%s",
-            old[["ori_temp_id", "NUHSA", "Fecha de la pueba", "ori_temp_date"]].to_string(index=False),
-        )
+        logger.warning(old[["ori_temp_id", "NUHSA", "Fecha de la pueba", "ori_temp_date"]].to_string(index=False))
         orient_errors = pd.concat([orient_errors, old], ignore_index=True)
         orient = orient.loc[orient["ori_temp_date"] >= "2020-01-01"]
     else:
@@ -481,7 +477,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     future = malaga.loc[malaga["Fecha registro"] > today]
     if not future.empty:
         logger.warning("Future dates in HRUM")
-        logger.warning("%s", future.to_string(index=False))
+        logger.warning(future.to_string(index=False))
         malaga_errors.append(future)
         malaga = malaga.loc[malaga["Fecha registro"] <= today]
     else:
@@ -489,7 +485,7 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     old = malaga.loc[malaga["Fecha registro"] < "2020-01-01"]
     if not old.empty:
         logger.warning("Old dates in HRUM")
-        logger.warning("%s", old.to_string(index=False))
+        logger.warning(old.to_string(index=False))
         malaga_errors.append(old)
         malaga = malaga.loc[malaga["Fecha registro"] >= "2020-01-01"]
     else:
@@ -503,19 +499,19 @@ def update_dates(samples: pd.DataFrame) -> pd.DataFrame:
     granada = pd.read_csv(granada_path, sep=";", dtype=str)
     granada["date_huvn"] = granada["Fecha de toma de muestra"].fillna(granada["Fecha de recepción de la muestra"])
     format_errors = granada.loc[pd.to_datetime(granada["date_huvn"], format="%d/%m/%Y", errors="coerce").isnull()]
-    logger.info("Errors in HUVN date format %s: %d", "%d/%m/%Y", format_errors.shape[0])
+    logger.info(f"Errors in HUVN date format %d/%m/%Y: {format_errors.shape[0]}")
     granada["date_huvn"] = pd.to_datetime(granada["date_huvn"], format="%d/%m/%Y", errors="coerce")
     future = granada.loc[granada["date_huvn"] > today]
     if not future.empty:
         logger.warning("Future dates in HUVN")
-        logger.warning("%s", future.to_string(index=False))
+        logger.warning(future.to_string(index=False))
         granada = granada.loc[granada["date_huvn"] <= today]
     else:
         logger.info("HUVN future dates OK")
     old = granada.loc[granada["date_huvn"] < "2020-01-01"]
     if not old.empty:
         logger.warning(" Old dates in HUVN")
-        logger.warning("%s", old.to_string(index=False))
+        logger.warning(old.to_string(index=False))
         granada = granada.loc[granada["date_huvn"] >= "2020-01-01"]
     else:
         logger.info("HUVN old dates OK")
@@ -573,9 +569,9 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
         for origin, target in translation.items():
             subset.loc[:, "location"] = subset["location"].replace(origin, target)
 
-    logger.info("Auspice records: %d", subset.shape[0])
+    logger.info(f"Auspice records: {subset.shape[0]}")
     selected = subset.loc[subset["selected_for_nextstrain"] == "yes"].copy()
-    logger.info("Auspice selected for nextstrain: %d", selected.shape[0])
+    logger.info(f"Auspice selected for nextstrain: {selected.shape[0]}")
 
     first_wave = pd.read_csv(WAVE1_PATH / "metadata.tsv", sep="\t")
     first_wave["1wave"] = "yes"
@@ -587,10 +583,10 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
     first_wave.drop(columns=["seqName", "taxon"], inplace=True)
 
     selected = pd.concat([selected, first_wave], ignore_index=True)
-    logger.info("Auspice with first wave: %d", selected.shape[0])
+    logger.info(f"Auspice with first wave: {selected.shape[0]}")
 
     selected = selected.loc[selected["date"].notnull()]
-    logger.info("Auspice with date: %d", selected.shape[0])
+    logger.info(f"Auspice with date: {selected.shape[0]}")
 
     alpha_err = selected.loc[(selected["date"] < "2020-12-01") & (selected["lineage"] == "B.1.1.7")]
     delta_err = selected.loc[(selected["date"] < "2021-05-01") & (selected["lineage"].str.startswith("AY"))]
@@ -600,21 +596,21 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
     err.to_excel("error_date_lineage.xlsx", index=False)
 
     selected = selected.loc[~selected["strain"].isin(err["strain"])]
-    logger.info("Auspice after date-lineage filter: %d", selected.shape[0])
+    logger.info(f"Auspice after date-lineage filter: {selected.shape[0]}")
 
     outliers_file = NEXTSTRAIN_DATA / "remove_SARSCOV2_samples_outliers.txt"
     if outliers_file.exists():
         with outliers_file.open("r") as handle:
             outliers = [line.strip() for line in handle if line.strip()]
         selected = selected.loc[~selected["strain"].isin(outliers)]
-    logger.info("Auspice after AND id filter: %d", selected.shape[0])
+    logger.info(f"Auspice after AND id filter: {selected.shape[0]}")
 
     selected.drop_duplicates("strain", keep="first", inplace=True)
-    logger.info("Auspice without strain duplicates: %d", selected.shape[0])
+    logger.info(f"Auspice without strain duplicates: {selected.shape[0]}")
 
     today = dt.datetime.now()
     selected = selected.loc[selected["date"] < today]
-    logger.info("Auspice without future dates: %d", selected.shape[0])
+    logger.info(f"Auspice without future dates: {selected.shape[0]}")
 
     selected.loc[selected["batch"].isnull(), "batch"] = ""
 
@@ -633,9 +629,9 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
     )
 
     selected = selected.loc[selected["location"].notnull()]
-    logger.info("Auspice with location: %d", selected.shape[0])
+    logger.info(f"Auspice with location: {selected.shape[0]}")
     selected = selected.loc[selected.get("source", "") != "SAS-imputed"]
-    logger.info("Auspice without SAS-imputed: %d", selected.shape[0])
+    logger.info(f"Auspice without SAS-imputed: {selected.shape[0]}")
 
     aggregated = selected[["strain", "batch", "date", "lineage", "location", "provincia", "hospital", "hospital de referencia"]]
     aggregated.to_csv(WEB_REPORTS_DIR / f"agregado_web_{timestamp}.tsv", sep="\t", index=False)
@@ -656,7 +652,7 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
     locs = set(selected["location"].values)
     missing = locs - lat_long_names
     if missing:
-        logger.info("Missing coordinates for: %s", sorted(missing))
+        logger.info(f"Missing coordinates for: {sorted(missing)}")
 
     four_months_ago = dt.date.today() - dt.timedelta(days=int(4 * 365 / 12))
     cutoff = pd.to_datetime(four_months_ago.strftime("%Y-%m-%d"))
@@ -713,15 +709,16 @@ def write_sequences(auspice: pd.DataFrame, samples: pd.DataFrame) -> None:
         for strain, sequence in seq.items():
             handle.write(f">{strain}\n{sequence}\n")
 
+    auspice_strain_count = len(auspice["strain"])
     logger.info(
-        "Sequences generated: %d (auspice strains: %d)", len(seq.keys()), len(auspice["strain"])
+        f"Sequences generated: {len(seq)} (auspice strains: {auspice_strain_count})"
     )
     missing_in_auspice = set(seq.keys()) - set(auspice["strain"])
     missing_in_sequences = set(auspice["strain"]) - set(seq.keys())
     if missing_in_auspice:
-        logger.info("Sequences without auspice metadata: %s", sorted(missing_in_auspice))
+        logger.info(f"Sequences without auspice metadata: {sorted(missing_in_auspice)}")
     if missing_in_sequences:
-        logger.info("Auspice strains without sequences: %s", sorted(missing_in_sequences))
+        logger.info(f"Auspice strains without sequences: {sorted(missing_in_sequences)}")
 
     auspice.to_csv(DATA_DIR / "auspice_metadata.tsv", sep="\t", index=False)
 
