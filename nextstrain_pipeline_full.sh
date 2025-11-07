@@ -12,29 +12,27 @@ AUSPICE_DIR="./auspice_full"
 mkdir -p "${RESULTS_DIR}" "${AUSPICE_DIR}"
 
 time augur filter \
-  --sequences "${SEQUENCES}" \
-  --metadata "${METADATA}" \
-  --output-sequences "${RESULTS_DIR}/filtered.fasta" \
-  --output-metadata  "${RESULTS_DIR}/metadata.filtered.tsv" \
-  --min-length 29500 \
-  --max-ambiguous 3000 \
-  --exclude-ambiguous-dates-by any \
-  --min-date 2019-12-01 \
-  --prune-duplicates \
-  --subsample-max-sequences 0
+    --sequences "${SEQUENCES}" \
+    --metadata "${METADATA}" \
+    --output-sequences "${RESULTS_DIR}/filtered.fasta" \
+    --output-metadata  "${RESULTS_DIR}/metadata.filtered.tsv" \
+    --min-length 29500 \
+    --exclude-ambiguous-dates-by any \
+    --min-date 2019-12-01 \
+    --subsample-max-sequences 0
 
 time augur mask \
-  --sequences "${RESULTS_DIR}/filtered.fasta" \
-  --output "${RESULTS_DIR}/masked.fasta" \
-  --mask-from-beginning 100 \
-  --mask-from-end 100
+    --sequences "${RESULTS_DIR}/filtered.fasta" \
+    --output "${RESULTS_DIR}/masked.fasta" \
+    --mask-from-beginning 100 \
+    --mask-from-end 100
 
 time augur align \
     --sequences "${RESULTS_DIR}/masked.fasta" \
     --output "${RESULTS_DIR}/aligned.fasta" \
     --reference-sequence "${REFERENCE}" \
     --remove-reference \
-    --method "nextalign" \
+    --method "mafft" \
     --nthreads 40
 
 time augur tree \
@@ -76,11 +74,11 @@ time augur translate \
     --output "${RESULTS_DIR}/aa_muts.json"
 
 time augur traits \
-  --tree "${RESULTS_DIR}/tree.nwk" \
-  --metadata "${RESULTS_DIR}/metadata.filtered.tsv" \
-  --columns region country division \
-  --output-node-data "${RESULTS_DIR}/traits.json" \
-  --confidence
+    --tree "${RESULTS_DIR}/tree.nwk" \
+    --metadata "${RESULTS_DIR}/metadata.filtered.tsv" \
+    --columns region country division \
+    --output-node-data "${RESULTS_DIR}/traits.json" \
+    --confidence
 
   time augur frequencies \
     --tree "${RESULTS_DIR}/tree.nwk" \
