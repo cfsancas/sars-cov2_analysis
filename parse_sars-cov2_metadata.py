@@ -11,6 +11,7 @@ Usage::
 The script assumes the same directory layout that the notebook expected.  You
 can override the base directory by exporting ``COVID19_SSPA_BASE``.
 """
+import csv
 import datetime as dt
 import logging
 import os
@@ -59,6 +60,24 @@ def fasta_get_by_name(fasta: Path | str, ids: list[str], delimit: str = " ", col
         if token in targets:
             subset[header] = sequence
     return subset
+
+
+def load_location_translations(tsv_path: Path) -> dict[str, str]:
+    """Load location name translations from a TSV file into a dictionary."""
+
+    if not tsv_path.exists():
+        return {}
+
+    translation: dict[str, str] = {}
+    with tsv_path.open("r", encoding="utf-8") as handle:
+        reader = csv.reader(handle, delimiter="\t")
+        for row in reader:
+            if len(row) < 2:
+                continue
+            origin, target = (value.strip() for value in row[:2])
+            if origin:
+                translation[origin] = target
+    return translation
 
 
 def read_batch_plan() -> pd.DataFrame:
@@ -292,14 +311,9 @@ def assign_geography(samples: pd.DataFrame) -> pd.DataFrame:
     enriched["Municipio"] = enriched["Municipio"].str.strip()
 
     location_dict = DATA_DIR / "location_names_dict.tsv"
-    if location_dict.exists():
-        with location_dict.open("r") as handle:
-            for raw_line in handle:
-                line = raw_line.strip()
-                if not line:
-                    continue
-                src, dst = line.split("\t")
-                enriched.loc[enriched["Municipio"] == src, "Municipio"] = dst
+    translations = load_location_translations(location_dict)
+    if translations:
+        enriched["Municipio"] = enriched["Municipio"].replace(translations)
 
     lat_long_file = CONFIG_DIR / "lat_long.tsv"
     if lat_long_file.exists():
@@ -557,17 +571,9 @@ def build_auspice(samples: pd.DataFrame, nextclade: pd.DataFrame, lineage: pd.Da
     subset["location"] = subset["location"].str.strip()
 
     location_names = DATA_DIR / "location_names_dict.tsv"
-    if location_names.exists():
-        translation: dict[str, str] = {}
-        with location_names.open("r") as handle:
-            for raw_line in handle:
-                line = raw_line.strip()
-                if not line:
-                    continue
-                origin, target = line.split("\t")
-                translation[origin] = target
-        for origin, target in translation.items():
-            subset.loc[:, "location"] = subset["location"].replace(origin, target)
+    translations = load_location_translations(location_names)
+    if translations:
+        subset["location"] = subset["location"].replace(translations)
 
     logger.info(f"Auspice records: {subset.shape[0]}")
     selected = subset.loc[subset["selected_for_nextstrain"] == "yes"].copy()
